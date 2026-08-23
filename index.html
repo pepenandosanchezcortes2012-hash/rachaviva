@@ -1737,6 +1737,10 @@ Cargando una pregunta...
      wiring de "reflection-confirm-btn" / "reflection-skip-btn" más abajo).
      ========================================================================== */
   const REFLECTION_WEBHOOK_URL = 'https://rachaviva.app.n8n.cloud/webhook/rachaviva-reflexion';
+  // Frena scraping casual del webhook (ver comentario en el header más abajo).
+  // Debe coincidir con la credencial Header Auth configurada en el nodo
+  // Webhook de n8n. Rotar acá y en n8n si hace falta invalidar el actual.
+  const REFLECTION_CLIENT_SECRET = '11SnBR1JatTMyjgoUwvuW3g8x9U3Nlf8';
   // 15s de margen: el webhook (n8n + Gemini) mostró en pruebas reales una
   // latencia de 5.7-8s de punta a punta; 6s abortaba de más y caía al
   // fallback local sin necesidad.
@@ -1767,7 +1771,15 @@ Cargando una pregunta...
       timeoutId = setTimeout(() => controller.abort(), REFLECTION_FETCH_TIMEOUT_MS);
       const res = await fetch(REFLECTION_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // No es autenticación real -- este archivo es público, cualquiera
+          // puede leer este valor en el código fuente. Es fricción contra
+          // scraping/abuso casual y automatizado no dirigido, no contra un
+          // atacante que se toma el trabajo de mirar el código. La defensa
+          // real (rate limit, cuota) vive del lado de n8n.
+          'X-RachaViva-Client-Secret': REFLECTION_CLIENT_SECRET
+        },
         body: JSON.stringify({ habitName, streakCount }),
         signal: controller.signal
       });
@@ -2128,6 +2140,26 @@ Cargando una pregunta...
       }
       if (typeof h.name !== 'string' || !h.name.trim()) {
         return { valid: false, error: 'El archivo contiene hábitos sin nombre ⚠️' };
+      }
+      // reflections es opcional (backups de antes de esta función no lo
+      // traen), pero si viene, se valida con la misma estrictez que id/name:
+      // objeto plano (no array), claves con forma de fecha YYYY-MM-DD, y
+      // valores string dentro del mismo límite que usa saveReflectionForToday
+      // al escribir (REFLECTION_ANSWER_MAX_LENGTH). Un backup hostil no puede
+      // colar acá contenido arbitrario para que lo renderice sin escapar una
+      // futura pantalla de "ver mis reflexiones".
+      if (h.reflections !== undefined) {
+        if (h.reflections === null || typeof h.reflections !== 'object' || Array.isArray(h.reflections)) {
+          return { valid: false, error: 'El archivo contiene reflexiones con un formato inválido ⚠️' };
+        }
+        for (const [dateKey, text] of Object.entries(h.reflections)) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+            return { valid: false, error: 'El archivo contiene reflexiones con una fecha inválida ⚠️' };
+          }
+          if (typeof text !== 'string' || text.length > REFLECTION_ANSWER_MAX_LENGTH) {
+            return { valid: false, error: 'El archivo contiene una reflexión demasiado larga o inválida ⚠️' };
+          }
+        }
       }
     }
     const importedUsername = typeof parsed.username === 'string' ? parsed.username.trim() : '';
