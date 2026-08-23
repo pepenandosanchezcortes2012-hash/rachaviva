@@ -2427,7 +2427,7 @@ Cargando una pregunta...
     const longest = habit.longestStreak || 0;
     const totalDays = (habit.history || []).length;
     return `
-      <div class="habit-stats" id="stats-${habit.id}" style="display: ${isExpanded ? 'flex' : 'none'};">
+      <div class="habit-stats" id="stats-${escapeHtml(habit.id)}" style="display: ${isExpanded ? 'flex' : 'none'};">
         <div class="stats-row">
           <div class="stat-block">
             <span class="stat-value">${longest}</span>
@@ -2460,7 +2460,7 @@ Cargando una pregunta...
             type="button"
             class="check-btn ${completed ? 'completed' : ''}"
             data-action="toggle"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="${completed ? 'Deshacer completado de hoy para ' + escapeHtml(habit.name) : 'Marcar ' + escapeHtml(habit.name) + ' como hecho hoy'}"
             title="${completed ? 'Completado hoy (clic para deshacer)' : 'Marcar hecho hoy'}"
           >
@@ -2489,10 +2489,10 @@ Cargando una pregunta...
             type="button"
             class="stats-toggle-btn ${isExpanded ? 'active' : ''}"
             data-action="stats"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Ver estadísticas de ${escapeHtml(habit.name)}"
             aria-expanded="${isExpanded}"
-            aria-controls="stats-${habit.id}"
+            aria-controls="stats-${escapeHtml(habit.id)}"
             title="Ver estadísticas"
           >
             <svg viewBox="0 0 24 24">
@@ -2505,7 +2505,7 @@ Cargando una pregunta...
             type="button"
             class="move-btn move-up-btn"
             data-action="move-up"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Mover ${escapeHtml(habit.name)} arriba"
             title="Mover arriba"
             ${isFirst ? 'disabled' : ''}
@@ -2519,7 +2519,7 @@ Cargando una pregunta...
             type="button"
             class="move-btn move-down-btn"
             data-action="move-down"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Mover ${escapeHtml(habit.name)} abajo"
             title="Mover abajo"
             ${isLast ? 'disabled' : ''}
@@ -2533,7 +2533,7 @@ Cargando una pregunta...
             type="button"
             class="edit-btn"
             data-action="edit"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Editar hábito ${escapeHtml(habit.name)}"
             title="Editar hábito"
           >
@@ -2546,7 +2546,7 @@ Cargando una pregunta...
             type="button"
             class="archive-btn"
             data-action="archive"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Archivar hábito ${escapeHtml(habit.name)}"
             title="Archivar hábito"
           >
@@ -2560,7 +2560,7 @@ Cargando una pregunta...
             type="button"
             class="delete-btn"
             data-action="delete"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Eliminar hábito ${escapeHtml(habit.name)}"
             title="Eliminar hábito"
           >
@@ -2585,7 +2585,7 @@ Cargando una pregunta...
     const name = escapeHtml(habit.name);
     const streak = habit.streak || 0;
     return `
-      <div class="archived-item" data-id="${habit.id}">
+      <div class="archived-item" data-id="${escapeHtml(habit.id)}">
         <div class="archived-item-info">
           <span class="archived-item-name" title="${name}">${name}</span>
           ${renderStreakVisual(habit.id, streak)}
@@ -2595,7 +2595,7 @@ Cargando una pregunta...
             type="button"
             class="restore-btn"
             data-action="restore"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Restaurar hábito ${name}"
             title="Restaurar hábito"
           >
@@ -2609,7 +2609,7 @@ Cargando una pregunta...
             type="button"
             class="delete-btn"
             data-action="delete"
-            data-id="${habit.id}"
+            data-id="${escapeHtml(habit.id)}"
             aria-label="Eliminar hábito ${name}"
             title="Eliminar hábito"
           >
