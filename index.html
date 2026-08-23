@@ -1731,7 +1731,10 @@ Cargando una pregunta...
      wiring de "reflection-confirm-btn" / "reflection-skip-btn" más abajo).
      ========================================================================== */
   const REFLECTION_WEBHOOK_URL = 'https://rachaviva.app.n8n.cloud/webhook/rachaviva-reflexion';
-  const REFLECTION_FETCH_TIMEOUT_MS = 6000;
+  // 15s de margen: el webhook (n8n + Gemini) mostró en pruebas reales una
+  // latencia de 5.7-8s de punta a punta; 6s abortaba de más y caía al
+  // fallback local sin necesidad.
+  const REFLECTION_FETCH_TIMEOUT_MS = 15000;
   const REFLECTION_ANSWER_MAX_LENGTH = 500;
 
   // Mismo banco de preguntas que el nodo "Extraer pregunta / fallback" del
