@@ -1374,6 +1374,7 @@ Cargando una pregunta...
   const onboardingForm = document.getElementById('onboarding-form');
   const usernameInput = document.getElementById('username-input');
   const usernameError = document.getElementById('username-error');
+  const onboardingSubmitBtn = document.getElementById('onboarding-submit-btn');
 
   // Modal crear/editar (mismo modal reusado en los dos modos, ver
   // habitIdBeingEdited más abajo: null = modo crear, id = modo edición)
@@ -1658,7 +1659,7 @@ Cargando una pregunta...
     openModal(onboardingModalOverlay, usernameInput);
   }
 
-  function handleOnboardingSubmit() {
+  async function handleOnboardingSubmit() {
     const name = usernameInput.value.trim();
     // Límite de longitud: tomamos el mismo maxlength ya definido en el HTML
     // del input (30), para no duplicar el número "a ojo" en dos lugares.
@@ -1677,6 +1678,27 @@ Cargando una pregunta...
       usernameError.textContent = `El nombre no puede superar los ${maxLen} caracteres.`;
       usernameError.classList.add('visible');
       usernameInput.focus();
+      return;
+    }
+
+    usernameInput.classList.remove('error');
+    usernameError.classList.remove('visible');
+    onboardingSubmitBtn.disabled = true;
+    const originalBtnText = onboardingSubmitBtn.textContent;
+    onboardingSubmitBtn.textContent = 'Verificando...';
+
+    let allowed = true;
+    try {
+      allowed = await checkUserLimitAllowed();
+    } finally {
+      onboardingSubmitBtn.disabled = false;
+      onboardingSubmitBtn.textContent = originalBtnText;
+    }
+
+    if (!allowed) {
+      usernameInput.classList.add('error');
+      usernameError.textContent = 'RachaViva alcanzó su límite de 10 usuarios ⚠️';
+      usernameError.classList.add('visible');
       return;
     }
 
@@ -1746,6 +1768,66 @@ Cargando una pregunta...
   // fallback local sin necesidad.
   const REFLECTION_FETCH_TIMEOUT_MS = 15000;
   const REFLECTION_ANSWER_MAX_LENGTH = 500;
+
+  /* ==========================================================================
+     LÍMITE DE USUARIOS (máximo 10 dispositivos distintos pueden completar el
+     onboarding). Se cuenta por dispositivo (un id anónimo generado una sola
+     vez y guardado en localStorage), NO por nombre elegido -- así no se
+     esquiva el límite poniendo nombres distintos en el mismo navegador.
+     Los primeros 10 dispositivos quedan habilitados para siempre (un
+     dispositivo ya registrado siempre puede volver a entrar). El conteo vive
+     en un workflow de n8n aparte (usa workflow static data, no hace falta
+     una tabla). Si el chequeo falla por red/timeout, se deja pasar
+     (fail-open): un problema de conexión nunca debe trabar el onboarding.
+     ========================================================================== */
+  const USER_LIMIT_WEBHOOK_URL = 'https://rachaviva.app.n8n.cloud/webhook/rachaviva-registro';
+  const USER_LIMIT_CHECK_TIMEOUT_MS = 8000;
+  const DEVICE_ID_STORAGE_KEY = 'rachaviva_device_id';
+
+  function getOrCreateDeviceId() {
+    try {
+      let id = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+      if (id) return id;
+      id = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      localStorage.setItem(DEVICE_ID_STORAGE_KEY, id);
+      return id;
+    } catch (err) {
+      // localStorage no disponible (modo privado restrictivo, etc.): un id
+      // que no persiste es preferible a romper el onboarding.
+      return 'dev-sin-storage-' + Math.random().toString(36).slice(2);
+    }
+  }
+
+  // Devuelve true si este dispositivo puede continuar (ya registrado, recién
+  // registrado, o el chequeo falló y se deja pasar). Devuelve false SOLO
+  // cuando n8n respondió explícitamente que el límite ya se alcanzó.
+  async function checkUserLimitAllowed() {
+    let controller = null;
+    let timeoutId = null;
+    try {
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), USER_LIMIT_CHECK_TIMEOUT_MS);
+      const res = await fetch(USER_LIMIT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RachaViva-Client-Secret': REFLECTION_CLIENT_SECRET
+        },
+        body: JSON.stringify({ deviceId: getOrCreateDeviceId() }),
+        signal: controller.signal
+      });
+      if (!res.ok) return true; // fail-open
+      const data = await res.json();
+      return data.allowed !== false;
+    } catch (err) {
+      console.error('No se pudo verificar el límite de usuarios (se deja pasar):', err);
+      return true; // fail-open
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
 
   // Mismo banco de preguntas que el nodo "Extraer pregunta / fallback" del
   // workflow de n8n, como segunda red de seguridad: esto cubre el caso en el
